@@ -1,0 +1,35 @@
+---
+title: "NSSI"
+author: "Diego Arias"
+date: "12/14/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(readxl)
+library(janitor)
+```
+
+```{r}
+post <- read_excel("Dare_Post-Task.xlsx") %>%
+  clean_names() 
+pre <- read_excel("Dare_Pre-Task.xlsx") %>%
+  clean_names()
+selected_post <- post %>%
+  mutate(ID_number = q71) %>%
+  select(ID_number, q5, q23)
+
+selected_pre <- pre %>%
+  mutate(ID_number = q32) %>%
+  select(ID_number, q419, q422, q423, q389_113, q253_2)
+
+
+
+combined <- inner_join(selected_post, selected_pre, by = "ID_number" )
+
+glimpse(combined)
+
+```
+
