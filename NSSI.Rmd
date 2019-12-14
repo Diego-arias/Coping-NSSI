@@ -10,6 +10,7 @@ knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(readxl)
 library(janitor)
+library(plyr)
 ```
 
 ```{r}
@@ -17,19 +18,57 @@ post <- read_excel("Dare_Post-Task.xlsx") %>%
   clean_names() 
 pre <- read_excel("Dare_Pre-Task.xlsx") %>%
   clean_names()
+
+#changed names of selected columns to reflect what they show in post questionnaire
+
 selected_post <- post %>%
-  mutate(ID_number = q71) %>%
-  select(ID_number, q5, q23)
+  mutate(ID_number = q71,avoidant_1 = q5, avoidant_2 = q23)
 
+#I was not sure how to go about this. I figured it would not be illogical to turn the questions into 0,1,2, and 3 values (0 being never doing it, 1 bieng a little, 2 being a medium, and 3 a lot). This is so I can easily add up the two avoidance columnsto see how much they have done done avoidance coping overall. I know its not perfect, but honestly I feel like it makes logical sense.
+   selected_post$avoidant_1 <- revalue(selected_post$avoidant_1, c("1 = I haven't been doing this at all"="0", "2 = I've been doing this a little bit" = "1", "3 = I've been doing this a medium amount" = "2", "4 = I've been doing this a lot" = "3"))
+   selected_post$avoidant_2 <- revalue(selected_post$avoidant_1, c("1 = I haven't been doing this at all"="0", "2 = I've been doing this a little bit" = "1", "3 = I've been doing this a medium amount" = "2", "4 = I've been doing this a lot" = "3"))
+   
+   selected_post <- selected_post %>%
+     mutate(avoidant_1 = as.numeric(avoidant_1)) %>%
+     mutate(avoidant_2 = as.numeric(avoidant_2)) %>%
+     mutate(avoidant_coping = avoidant_1 + avoidant_2) %>%
+    select(ID_number, avoidant_coping)
+  
+  
+#changed names of selected columns to reflect what they show in pre questionnaire
 selected_pre <- pre %>%
-  mutate(ID_number = q32) %>%
-  select(ID_number, q419, q422, q423, q389_113, q253_2)
+  mutate(ID_number = q32, engaged = q419, engaged_life = q422, engaged_year = q423) %>%
+  select(ID_number, engaged, engaged_life, engaged_year, q389_113, q253_2)
+
+
+#combined columns by ID number and got rid of test rows
+combined <- inner_join(selected_post, selected_pre, by = "ID_number" ) %>%
+  filter(!ID_number %in% c("test", "pete", "Ellen"))
+
+#people who said no to engaging in NSSI then had NA's for engaging in year or life. Since this is because they had never engaged, I recoded NAs as 0
+combined[is.na(combined)] = 0
+
+combined
+
+t.test(combined$avoidant_coping ~ combined$engaged)
+
+combined_engaged <- combined
+
+
+engaged_no_engages_violin <- combined %>%
+  ggplot(aes(x=engaged, y = avoidant_coping, color = engaged)) +
+  geom_violin() +
+  stat_summary(fun.y = mean, geom = "point") +
+  geom_jitter(shape = 16, color = "black", size = .5, height = 0.1, width = 0.2) + 
+  labs(title = "Distribution of Use of Avoidant Coping", subtitle = "Comparison across particiaptns who have and have not engaged in NSSI", y = "Combined metric of two Avoidance Coping Items on ", x = "Type of Geographic Origin of Respondent", legend = "Has participant ever engaged in NSSI") +
+  theme(legend.position = "none")+
+  theme(
+  plot.background = element_rect(fill = "white"),
+  panel.background = element_rect(fill = "white"),
+  axis.line.x = element_line(color = "grey"))
 
 
 
-combined <- inner_join(selected_post, selected_pre, by = "ID_number" )
-
-glimpse(combined)
 
 ```
 
